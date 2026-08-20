@@ -90,3 +90,20 @@ export async function updateUserRole(
 
   return { error: error?.message ?? null };
 }
+
+export async function adminCreateUser(input: {
+  email: string;
+  password: string;
+  name: string;
+  role: UserRole;
+}): Promise<{ error: string | null; userId: string | null }> {
+  const { data, error } = await supabase.rpc("admin_create_user", {
+    p_email: input.email,
+    p_password: input.password,
+    p_name: input.name,
+    p_role: input.role,
+  });
+
+  if (error) return { error: error.message, userId: null };
+  return { error: null, userId: (data as string) ?? null };
+}

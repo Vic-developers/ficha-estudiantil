@@ -1,0 +1,3 @@
+-- One-time cleanup aplicada en el proyecto remoto (eliminación del usuario
+-- de prueba creado para verificar admin_create_user). Se conserva solo como
+-- marcador de historial; no debe reejecutarse en producción.

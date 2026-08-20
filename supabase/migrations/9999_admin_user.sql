@@ -1,0 +1,3 @@
+-- Migración one-time aplicada directamente en el proyecto remoto
+-- (creación del usuario administrador inicial). Se conserva solo como
+-- marcador de historial; no debe reejecutarse en producción.

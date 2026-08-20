@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { BadgeCheck, Shield, UserCog } from "lucide-react";
+import { BadgeCheck, Shield, UserCog, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import {
   Card,
@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -25,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/students/ConfirmDialog";
+import { NewUserDialog } from "@/components/users/NewUserDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { listProfiles, updateUserRole } from "@/services/auth";
 import { formatDateTime } from "@/lib/utils";
@@ -39,6 +41,7 @@ export function UsersPage() {
     role: UserRole;
   } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -78,11 +81,17 @@ export function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">Usuarios</h1>
-        <p className="text-sm text-muted-foreground">
-          Administra los roles de acceso al sistema.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Usuarios</h1>
+          <p className="text-sm text-muted-foreground">
+            Administra los roles y crea cuentas de acceso al sistema.
+          </p>
+        </div>
+        <Button onClick={() => setCreateOpen(true)}>
+          <UserPlus className="h-4 w-4" />
+          Nuevo usuario
+        </Button>
       </div>
 
       <Card>
@@ -176,6 +185,12 @@ export function UsersPage() {
           )}
         </CardContent>
       </Card>
+
+      <NewUserDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={() => void load()}
+      />
 
       <ConfirmDialog
         open={pending !== null}
