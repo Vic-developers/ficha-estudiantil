@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { BookOpen, Building2, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  BookOpen,
+  Building2,
+  FileSpreadsheet,
+  MapPin,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/students/ConfirmDialog";
+import { ImportCatalogDialog } from "@/components/catalogs/ImportCatalogDialog";
 import { useCatalogs } from "@/hooks/useCatalogs";
 import { checkCatalogNameExists } from "@/services/catalogs";
 import type { CatalogType } from "@/types";
@@ -68,6 +77,7 @@ export function CatalogsPage() {
   const [saving, setSaving] = useState(false);
   const [toDelete, setToDelete] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
     if (!TYPE_META[catalogType]) {
@@ -149,10 +159,16 @@ export function CatalogsPage() {
           <h1 className="text-xl font-semibold tracking-tight">{meta.title}</h1>
           <p className="text-sm text-muted-foreground">{meta.description}</p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="h-4 w-4" />
-          Nueva {catalogType === "universities" ? "universidad" : catalogType === "careers" ? "carrera" : "ubicación"}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <FileSpreadsheet className="h-4 w-4" />
+            Importar CSV
+          </Button>
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4" />
+            Nueva {catalogType === "universities" ? "universidad" : catalogType === "careers" ? "carrera" : "ubicación"}
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -251,6 +267,13 @@ export function CatalogsPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ImportCatalogDialog
+        type={catalogType}
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImported={() => void catalogs.refresh()}
+      />
 
       <ConfirmDialog
         open={toDelete !== null}

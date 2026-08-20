@@ -111,3 +111,15 @@ export interface ImportSummary {
 }
 
 export type CatalogType = "universities" | "careers" | "locations";
+
+export interface CatalogImportRow {
+  name: string;
+  status: ImportRowStatus;
+  message?: string;
+}
+
+export interface CatalogImportSummary {
+  total: number;
+  imported: number;
+  duplicates: number;
+}
