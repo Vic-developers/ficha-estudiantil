@@ -5,8 +5,10 @@ import {
   Building2,
   FileBarChart,
   GraduationCap,
+  LayoutGrid,
   MapPin,
   Plus,
+  Table2,
   Upload,
   Users,
 } from "lucide-react";
@@ -20,9 +22,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FilterControls } from "@/components/students/FilterControls";
 import { StudentCard } from "@/components/students/StudentCard";
 import { StudentModal } from "@/components/students/StudentModal";
+import { StudentTable, type SortState } from "@/components/students/StudentTable";
 import { EmptyState } from "@/components/students/EmptyState";
 import { Pagination } from "@/components/students/Pagination";
 import { useStudentDirectory } from "@/hooks/useStudentDirectory";
@@ -36,7 +40,7 @@ import {
   type ChartDatum,
 } from "@/services/students";
 import { clearFilters, hasActiveFilters } from "@/lib/filter-utils";
-import { paginate } from "@/lib/student-list";
+import { paginate, sortStudents } from "@/lib/student-list";
 import type { StudentFilters, StudentItem, StudentStats } from "@/types";
 
 function StatCard({
@@ -209,6 +213,11 @@ export function DashboardPage() {
     locationId: null,
   });
   const [page, setPage] = useState(1);
+  const [view, setView] = useState<"cards" | "table">("cards");
+  const [sort, setSort] = useState<SortState>({
+    key: "full_name",
+    direction: "asc",
+  });
   const [selected, setSelected] = useState<StudentItem | null>(null);
 
   const { students, loading, error } = useStudentDirectory(
@@ -247,13 +256,17 @@ export function DashboardPage() {
   }, [loadStats]);
 
   const hasFilters = hasActiveFilters(filters);
-  const totalPages = Math.max(1, Math.ceil(students.length / 6));
+  const sorted = useMemo(() => sortStudents(students, sort), [students, sort]);
+  const totalPages = Math.max(1, Math.ceil(sorted.length / 6));
 
   useEffect(() => {
     if (page > totalPages) setPage(1);
   }, [totalPages, page]);
 
-  const currentPageItems = useMemo(() => paginate(students, page, 6), [students, page]);
+  const currentPageItems = useMemo(
+    () => paginate(sorted, page, 6),
+    [sorted, page]
+  );
 
   return (
     <div className="space-y-6">
@@ -337,6 +350,21 @@ export function DashboardPage() {
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Estudiantes
           </h2>
+          <Tabs
+            value={view}
+            onValueChange={(v) => setView(v as "cards" | "table")}
+          >
+            <TabsList>
+              <TabsTrigger value="cards">
+                <LayoutGrid className="h-4 w-4" />
+                Tarjetas
+              </TabsTrigger>
+              <TabsTrigger value="table">
+                <Table2 className="h-4 w-4" />
+                Tabla
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
 
         {error && (
@@ -364,7 +392,7 @@ export function DashboardPage() {
             hasFilters={hasFilters}
             onClear={() => setFilters(clearFilters())}
           />
-        ) : (
+        ) : view === "cards" ? (
           <>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {currentPageItems.map((student) => (
@@ -379,7 +407,27 @@ export function DashboardPage() {
             <Pagination
               page={page}
               totalPages={totalPages}
-              totalItems={students.length}
+              totalItems={sorted.length}
+              onPageChange={setPage}
+            />
+          </>
+        ) : (
+          <>
+            <StudentTable
+              students={currentPageItems}
+              sort={sort}
+              onSortChange={(s) => {
+                setSort(s);
+                setPage(1);
+              }}
+              onOpen={setSelected}
+              onEdit={(s) => navigate(`/students/${s.id}/edit`)}
+              onDelete={setSelected}
+            />
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              totalItems={sorted.length}
               onPageChange={setPage}
             />
           </>
