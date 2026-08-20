@@ -36,3 +36,8 @@ pnpm-debug.log*
 supabase/.temp
 supabase/.branches
 supabase/.cache
+
+# Vercel
+.vercel
+.vercel
+.env*
