@@ -1,5 +1,6 @@
 export const siteConfig = {
   name: "Ficha Estudiantil",
+  institution: "ASEUCAM",
   description: "Administra y consulta la información de tus estudiantes.",
   photoBucket: "student-photos",
   maxPhotoSizeMb: 5,
