@@ -46,6 +46,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const profile = await fetchProfile(currentUser.id);
+    if (profile && profile.status !== "approved") {
+      await supabase.auth.signOut();
+      setUser(null);
+      return;
+    }
     setUser(toAuthUser(profile, currentUser.email));
   }, []);
 

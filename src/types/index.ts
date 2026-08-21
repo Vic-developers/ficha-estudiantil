@@ -1,4 +1,5 @@
 export type UserRole = "admin" | "consulta";
+export type ProfileStatus = "pending" | "approved" | "rejected";
 
 export interface University {
   id: string;
@@ -46,6 +47,7 @@ export interface Profile {
   id: string;
   name: string;
   role: UserRole;
+  status: ProfileStatus;
   created_at: string;
   updated_at: string;
 }
@@ -55,6 +57,7 @@ export interface AuthUser {
   email: string;
   name: string;
   role: UserRole;
+  status: ProfileStatus;
 }
 
 /** Filtros combinables usados en dashboard, listado y reportes. */

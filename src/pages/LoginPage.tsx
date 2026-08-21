@@ -59,7 +59,9 @@ export function LoginPage() {
     }
 
     if (mode === "register") {
-      toast.success("Cuenta creada. Ya puedes iniciar sesión.");
+      toast.success(
+        "Cuenta creada. Un administrador debe aprobarla antes de que puedas iniciar sesión."
+      );
       setMode("login");
       setLoading(false);
       return;
@@ -143,7 +145,8 @@ export function LoginPage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          Los nuevos usuarios se registran con rol de consulta. Un administrador
+          Los nuevos usuarios se registran con rol de consulta y quedan
+          pendientes hasta que un administrador los apruebe. Un administrador
           puede asignar permisos desde Usuarios.
         </p>
       </div>

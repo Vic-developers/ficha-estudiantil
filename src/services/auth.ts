@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import type { AuthUser, Profile, UserRole } from "@/types";
+import type { AuthUser, Profile, ProfileStatus, UserRole } from "@/types";
 
 export interface SignUpResult {
   error: string | null;
@@ -9,8 +9,27 @@ export async function signIn(
   email: string,
   password: string
 ): Promise<{ error: string | null }> {
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  return { error: error?.message ?? null };
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+  if (error) return { error: error.message };
+
+  const profile = await fetchProfile(data.user.id);
+  if (profile && profile.status !== "approved") {
+    await supabase.auth.signOut();
+    if (profile.status === "rejected") {
+      return {
+        error: "Tu cuenta fue rechazada. Contacta al administrador.",
+      };
+    }
+    return {
+      error:
+        "Tu cuenta está pendiente de aprobación por un administrador.",
+    };
+  }
+
+  return { error: null };
 }
 
 export async function signUp(
@@ -62,6 +81,7 @@ export function toAuthUser(
     email: email ?? "",
     name: profile.name,
     role: profile.role,
+    status: profile.status,
   };
 }
 
@@ -86,6 +106,18 @@ export async function updateUserRole(
   const { error } = await supabase
     .from("profiles")
     .update({ role })
+    .eq("id", userId);
+
+  return { error: error?.message ?? null };
+}
+
+export async function updateUserStatus(
+  userId: string,
+  status: ProfileStatus
+): Promise<{ error: string | null }> {
+  const { error } = await supabase
+    .from("profiles")
+    .update({ status })
     .eq("id", userId);
 
   return { error: error?.message ?? null };

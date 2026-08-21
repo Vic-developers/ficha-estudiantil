@@ -1,5 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
-import { BadgeCheck, Shield, UserCog, UserPlus } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  BadgeCheck,
+  CheckCircle2,
+  Shield,
+  UserCog,
+  UserPlus,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   Card,
@@ -10,6 +17,7 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -28,9 +36,22 @@ import {
 import { ConfirmDialog } from "@/components/students/ConfirmDialog";
 import { NewUserDialog } from "@/components/users/NewUserDialog";
 import { useAuth } from "@/hooks/useAuth";
-import { listProfiles, updateUserRole } from "@/services/auth";
+import {
+  listProfiles,
+  updateUserRole,
+  updateUserStatus,
+} from "@/services/auth";
 import { formatDateTime } from "@/lib/utils";
-import type { Profile, UserRole } from "@/types";
+import type { Profile, ProfileStatus, UserRole } from "@/types";
+
+const STATUS_META: Record<
+  ProfileStatus,
+  { label: string; variant: "success" | "warning" | "destructive" }
+> = {
+  pending: { label: "Pendiente", variant: "warning" },
+  approved: { label: "Aprobado", variant: "success" },
+  rejected: { label: "Rechazado", variant: "destructive" },
+};
 
 export function UsersPage() {
   const { user } = useAuth();
@@ -42,6 +63,8 @@ export function UsersPage() {
   } | null>(null);
   const [saving, setSaving] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [toReject, setToReject] = useState<Profile | null>(null);
+  const [rejecting, setRejecting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -57,6 +80,14 @@ export function UsersPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const sortedProfiles = useMemo(() => {
+    const rank = (status: ProfileStatus) =>
+      status === "pending" ? 0 : status === "approved" ? 1 : 2;
+    return [...profiles].sort(
+      (a, b) => rank(a.status) - rank(b.status) || a.name.localeCompare(b.name)
+    );
+  }, [profiles]);
 
   const handleRoleChange = (profile: Profile, role: UserRole) => {
     if (profile.role === role) return;
@@ -79,13 +110,39 @@ export function UsersPage() {
     setSaving(false);
   };
 
+  const handleApprove = async (profile: Profile) => {
+    const result = await updateUserStatus(profile.id, "approved");
+    if (result.error) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success(`Usuario "${profile.name}" aprobado. Ya puede iniciar sesión.`);
+    await load();
+  };
+
+  const confirmReject = async () => {
+    if (!toReject) return;
+    setRejecting(true);
+    const result = await updateUserStatus(toReject.id, "rejected");
+    setRejecting(false);
+    if (result.error) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success(`Usuario "${toReject.name}" rechazado.`);
+    setToReject(null);
+    await load();
+  };
+
+  const pendingCount = profiles.filter((p) => p.status === "pending").length;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Usuarios</h1>
           <p className="text-sm text-muted-foreground">
-            Administra los roles y crea cuentas de acceso al sistema.
+            Aproba las cuentas nuevas y administra los roles de acceso al sistema.
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>
@@ -96,11 +153,18 @@ export function UsersPage() {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Cuentas ({profiles.length})</CardTitle>
+          <CardTitle className="text-base">
+            Cuentas ({profiles.length})
+            {pendingCount > 0 && (
+              <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                {pendingCount} pendiente{pendingCount === 1 ? "" : "s"}
+              </span>
+            )}
+          </CardTitle>
           <CardDescription>
-            Los administradores pueden gestionar catálogos, estudiantes e
-            importaciones. El rol de consulta solo puede ver, buscar y generar
-            reportes.
+            Los usuarios registrados quedan pendientes hasta que los apruebes.
+            Los administradores gestionan catálogos, estudiantes e importaciones;
+            el rol de consulta solo puede ver, buscar y generar reportes.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -120,11 +184,13 @@ export function UsersPage() {
                 <TableRow className="hover:bg-transparent">
                   <TableHead>Usuario</TableHead>
                   <TableHead>Registro</TableHead>
+                  <TableHead>Estado</TableHead>
                   <TableHead className="w-44">Rol</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {profiles.map((profile) => (
+                {sortedProfiles.map((profile) => (
                   <TableRow key={profile.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -154,6 +220,11 @@ export function UsersPage() {
                       {formatDateTime(profile.created_at)}
                     </TableCell>
                     <TableCell>
+                      <Badge variant={STATUS_META[profile.status].variant}>
+                        {STATUS_META[profile.status].label}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
                       <Select
                         value={profile.role}
                         onValueChange={(v) =>
@@ -177,6 +248,35 @@ export function UsersPage() {
                           </SelectItem>
                         </SelectContent>
                       </Select>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-1">
+                        {profile.status !== "approved" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-emerald-600"
+                            onClick={() => void handleApprove(profile)}
+                            aria-label={`Aprobar a ${profile.name}`}
+                          >
+                            <CheckCircle2 className="h-4 w-4" />
+                            Aprobar
+                          </Button>
+                        )}
+                        {profile.status === "approved" &&
+                          profile.id !== user?.id && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 text-destructive hover:text-destructive"
+                              onClick={() => setToReject(profile)}
+                              aria-label={`Rechazar a ${profile.name}`}
+                            >
+                              <XCircle className="h-4 w-4" />
+                              Rechazar
+                            </Button>
+                          )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -205,6 +305,18 @@ export function UsersPage() {
         cancelLabel="Cancelar"
         loading={saving}
         onConfirm={() => void confirmRoleChange()}
+      />
+
+      <ConfirmDialog
+        open={toReject !== null}
+        onOpenChange={(open) => !open && setToReject(null)}
+        title="Rechazar usuario"
+        description={`¿Deseas rechazar a "${toReject?.name}"? La persona no podrá iniciar sesión hasta que lo apruebes de nuevo.`}
+        confirmLabel="Rechazar"
+        cancelLabel="Cancelar"
+        destructive
+        loading={rejecting}
+        onConfirm={() => void confirmReject()}
       />
     </div>
   );
